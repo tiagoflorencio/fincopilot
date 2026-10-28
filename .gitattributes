@@ -1,0 +1,11 @@
+# Quebras de linha consistentes (LF) no repositório, independente do SO de quem clona
+* text=auto eol=lf
+
+# Arquivos que o Visual Studio espera com CRLF
+*.sln text eol=crlf
+
+# Binários
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

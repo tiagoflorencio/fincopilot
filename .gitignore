@@ -1,0 +1,28 @@
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+
+# Node
+node_modules/
+dist/
+
+# Editores e SO
+.vs/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs e cobertura
+*.log
+coverage/
+
+# Segredos locais
+.env
+.env.*
+appsettings.*.local.json
+secrets.json
+
+# Configurações pessoais do Claude Code (as do projeto, em settings.json, são versionadas)
+.claude/settings.local.json
