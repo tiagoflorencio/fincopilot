@@ -1,17 +1,6 @@
-using System.Net;
-using System.Text.RegularExpressions;
-
 namespace FinCopilot.Api.Tools;
 
 public sealed record StockQuoteInput(string[] Tickers);
-
-public sealed record StockQuote(
-    string Symbol,
-    string? Name,
-    decimal? Price,
-    decimal? ChangePercent,
-    string? Currency,
-    DateTimeOffset? UpdatedAt);
 
 public sealed record StockQuoteResult(
     IReadOnlyList<StockQuote> Quotes,
@@ -23,7 +12,7 @@ public sealed record StockQuoteResult(
 /// <summary>
 /// Cotações da B3 (ações, FIIs, ETFs) via brapi.dev.
 /// </summary>
-public sealed partial class StockQuoteTool(HttpClient http, IConfiguration config) : AgentTool<StockQuoteInput>
+public sealed class StockQuoteTool(BrapiClient brapi) : AgentTool<StockQuoteInput>
 {
     private const int MaxTickers = 10;
 
@@ -58,80 +47,23 @@ public sealed partial class StockQuoteTool(HttpClient http, IConfiguration confi
             throw new ToolException("Informe pelo menos um ticker.");
         if (tickers.Length > MaxTickers)
             throw new ToolException($"No máximo {MaxTickers} tickers por chamada.");
-        if (tickers.FirstOrDefault(t => !TickerPattern().IsMatch(t)) is { } invalid)
+        if (tickers.FirstOrDefault(t => !BrapiClient.IsValidTicker(t)) is { } invalid)
             throw new ToolException($"Ticker inválido: '{invalid}'.");
 
-        // O plano gratuito da brapi aceita um ticker por requisição, então buscamos em paralelo.
-        var results = await Task.WhenAll(tickers.Select(t => FetchAsync(t, ct)));
-        var unavailable = results.Where(r => r.Status == FetchStatus.Unauthorized).Select(r => r.Ticker).ToList();
+        // Falha de um ticker não derruba os demais: o agente recebe o que deu certo e o motivo do resto.
+        var results = await Task.WhenAll(tickers.Select(t => brapi.FetchAsync(t, ct)));
+        var unavailable = results.Where(r => r.Status == QuoteStatus.Unauthorized).Select(r => r.Ticker).ToList();
 
-        if (results.All(r => r.Status == FetchStatus.Failed))
+        if (results.All(r => r.Status == QuoteStatus.Failed))
             throw new ToolException("A brapi está indisponível no momento.");
 
         return new StockQuoteResult(
             results.Where(r => r.Quote is not null).Select(r => r.Quote!).ToList(),
-            results.Where(r => r.Status == FetchStatus.NotFound).Select(r => r.Ticker).ToList(),
+            results.Where(r => r.Status == QuoteStatus.NotFound).Select(r => r.Ticker).ToList(),
             unavailable,
             "brapi.dev (dados podem ter atraso de até 15 minutos)",
             unavailable.Count > 0
                 ? "Alguns tickers exigem token da brapi (configuração Brapi:Token); sem ele, só ativos de demonstração como PETR4, VALE3, ITUB4 e MGLU3 são liberados."
                 : null);
     }
-
-    private enum FetchStatus { Ok, NotFound, Unauthorized, Failed }
-
-    private sealed record FetchResult(string Ticker, FetchStatus Status, StockQuote? Quote = null);
-
-    // Falha de um ticker não derruba os demais: o agente recebe o que deu certo e o motivo do resto.
-    private async Task<FetchResult> FetchAsync(string ticker, CancellationToken ct)
-    {
-        var url = $"https://brapi.dev/api/quote/{ticker}";
-        if (config["Brapi:Token"] is { Length: > 0 } token)
-            url += $"?token={Uri.EscapeDataString(token)}";
-
-        try
-        {
-            using var response = await http.GetAsync(url, ct);
-            if (response.StatusCode == HttpStatusCode.NotFound)
-                return new(ticker, FetchStatus.NotFound);
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.PaymentRequired or HttpStatusCode.Forbidden)
-                return new(ticker, FetchStatus.Unauthorized);
-            if (!response.IsSuccessStatusCode)
-                return new(ticker, FetchStatus.Failed);
-
-            var body = await response.Content.ReadFromJsonAsync<BrapiResponse>(ct);
-            if (body?.Results?.FirstOrDefault() is not { } r)
-                return new(ticker, FetchStatus.NotFound);
-
-            return new(ticker, FetchStatus.Ok, new StockQuote(
-                r.Symbol ?? ticker,
-                r.LongName ?? r.ShortName,
-                r.RegularMarketPrice,
-                r.RegularMarketChangePercent is { } c ? Math.Round(c, 2) : null,
-                r.Currency,
-                r.RegularMarketTime));
-        }
-        catch (HttpRequestException)
-        {
-            return new(ticker, FetchStatus.Failed);
-        }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
-        {
-            return new(ticker, FetchStatus.Failed);
-        }
-    }
-
-    [GeneratedRegex("^[A-Z0-9]{4,6}[0-9]{1,2}F?$|^\\^?[A-Z]{3,6}$")]
-    private static partial Regex TickerPattern();
-
-    private sealed record BrapiResponse(List<BrapiQuote>? Results);
-
-    private sealed record BrapiQuote(
-        string? Symbol,
-        string? ShortName,
-        string? LongName,
-        string? Currency,
-        decimal? RegularMarketPrice,
-        decimal? RegularMarketChangePercent,
-        DateTimeOffset? RegularMarketTime);
 }

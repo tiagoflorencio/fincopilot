@@ -17,7 +17,7 @@ public class StockQuoteToolTests
             ["HGLG11"] = (HttpStatusCode.Unauthorized, """{"error":true,"code":"MISSING_TOKEN"}"""),
             ["XPTO3"] = (HttpStatusCode.NotFound, """{"error":true}"""),
         });
-        IAgentTool tool = new StockQuoteTool(new HttpClient(handler), new ConfigurationBuilder().Build());
+        IAgentTool tool = new StockQuoteTool(new BrapiClient(new HttpClient(handler), new ConfigurationBuilder().Build()));
 
         var result = (StockQuoteResult)await tool.ExecuteAsync(Input("petr4", "HGLG11", "XPTO3"), CancellationToken.None);
 
@@ -34,7 +34,7 @@ public class StockQuoteToolTests
     [InlineData("../etc")]
     public async Task Rejeita_ticker_malformado(string ticker)
     {
-        IAgentTool tool = new StockQuoteTool(new HttpClient(new RoutingHandler([])), new ConfigurationBuilder().Build());
+        IAgentTool tool = new StockQuoteTool(new BrapiClient(new HttpClient(new RoutingHandler([])), new ConfigurationBuilder().Build()));
 
         await Assert.ThrowsAsync<ToolException>(() => tool.ExecuteAsync(Input(ticker), CancellationToken.None));
     }

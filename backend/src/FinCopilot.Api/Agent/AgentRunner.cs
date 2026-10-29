@@ -69,7 +69,8 @@ public sealed class AgentRunner(
                 output += response.Usage.OutputTokens;
                 cacheRead += response.Usage.CacheReadInputTokens ?? 0;
                 cacheWrite += response.Usage.CacheCreationInputTokens ?? 0;
-                stopReason = response.StopReason?.ToString() ?? "unknown";
+                // ApiEnum.ToString() devolve o JSON (com aspas); Raw() devolve o valor ("tool_use").
+                stopReason = response.StopReason?.Raw() ?? "unknown";
 
                 if (stopReason == "refusal")
                 {
@@ -124,14 +125,16 @@ public sealed class AgentRunner(
     {
         Model = _options.Model,
         MaxTokens = _options.MaxTokens,
-        System = new List<BetaTextBlockParam> { new() { Text = SystemPrompt.Text } },
+        // Breakpoint explícito no fim do prefixo estático (tools + system): garante a reutilização
+        // entre conversas diferentes, enquanto o cache automático abaixo cobre o histórico que cresce.
+        System = new List<BetaTextBlockParam> { new() { Text = SystemPrompt.Text, CacheControl = new BetaCacheControlEphemeral() } },
         Tools = _toolDefinitions,
         // Na última iteração permitida, o modelo precisa responder com o que já tem.
         ToolChoice = iteration == _options.MaxIterations ? new BetaToolChoiceNone() : new BetaToolChoiceAuto(),
         Messages = [.. conversation.Messages],
         Thinking = new BetaThinkingConfigAdaptive { Display = Display.Summarized },
         OutputConfig = new BetaOutputConfig { Effort = ParseEffort(_options.Effort) },
-        // Cache automático do prefixo (tools + system + histórico): reduz custo a partir do 2º turno.
+        // Cache automático da cauda da conversa: reduz custo a partir da 2ª iteração/turno.
         CacheControl = new BetaCacheControlEphemeral(),
         // Se um classificador de segurança recusar, a API tenta o modelo de fallback recomendado.
         Betas = ["server-side-fallback-2026-07-01"],

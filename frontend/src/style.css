@@ -15,6 +15,13 @@
   --danger: #c2372f;
   --danger-bg: rgba(194, 55, 47, 0.09);
 
+  /* Cores por tipo de ativo (gráfico). Validadas com o validate_palette.js da skill de dataviz,
+     por tema e contra a superfície de cada um; só 4 cores passam na separação para daltonismo. */
+  --series-stock: #2a78d6;
+  --series-fii: #eda100;
+  --series-etf: #e87ba4;
+  --series-fixed-income: #008300;
+
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
 
@@ -42,6 +49,11 @@
     --violet: #9d84ea;
     --danger: #f0766d;
     --danger-bg: rgba(240, 118, 109, 0.12);
+
+    --series-stock: #3987e5;
+    --series-fii: #c98500;
+    --series-etf: #d55181;
+    --series-fixed-income: #008300;
 
     color-scheme: dark;
   }

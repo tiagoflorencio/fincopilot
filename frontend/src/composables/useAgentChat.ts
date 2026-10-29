@@ -2,8 +2,10 @@ import { computed, ref } from 'vue'
 import { createSseParser } from '../lib/sse'
 import { applyEvent } from '../lib/turnReducer'
 import type { AgentEvent, Turn } from '../types/agent'
+import type { PortfolioPayload } from '../types/portfolio'
 
-export function useAgentChat() {
+/** @param getPortfolio carteira atual, lida no momento do envio de cada mensagem. */
+export function useAgentChat(getPortfolio: () => PortfolioPayload | null = () => null) {
   const turns = ref<Turn[]>([])
   const selectedTurnId = ref<string | null>(null)
   const conversationId = ref<string | null>(null)
@@ -35,7 +37,7 @@ export function useAgentChat() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: turn.question, conversationId: conversationId.value }),
+        body: JSON.stringify({ message: turn.question, conversationId: conversationId.value, portfolio: getPortfolio() }),
         signal: controller.signal,
       })
 

@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { formatDuration, formatUsd, toolLabel } from '../lib/format'
 import { renderMarkdown } from '../lib/markdown'
+import { findPortfolioAnalysis } from '../lib/portfolio'
 import type { Turn } from '../types/agent'
+
+// Carregado sob demanda: o Chart.js só é baixado quando aparece uma análise de carteira.
+const PortfolioInsights = defineAsyncComponent(() => import('./PortfolioInsights.vue'))
 
 const props = defineProps<{ turn: Turn; selected: boolean }>()
 defineEmits<{ select: [] }>()
 
 const html = computed(() => renderMarkdown(props.turn.answer))
+
+// Os números do gráfico vêm do resultado da ferramenta (código), nunca do texto do modelo.
+const analysis = computed(() => findPortfolioAnalysis(props.turn))
 
 const runningTool = computed(() => {
   const step = [...props.turn.steps].reverse().find((s) => s.kind === 'tool' && s.status === 'running')
@@ -20,6 +27,8 @@ const runningTool = computed(() => {
     <div class="bubble bubble--user">{{ turn.question }}</div>
 
     <div class="answer" :class="{ 'is-selected': selected }">
+      <PortfolioInsights v-if="analysis" :analysis="analysis" />
+
       <div v-if="turn.status === 'running' && !turn.answer" class="status">
         <span class="spinner" aria-hidden="true"></span>
         {{ runningTool ? `Consultando: ${runningTool}` : 'Analisando…' }}
@@ -58,6 +67,7 @@ const runningTool = computed(() => {
 }
 
 .answer {
+  min-width: 0;
   padding: 2px 0 2px 14px;
   border-left: 2px solid transparent;
   transition: border-color 0.2s;

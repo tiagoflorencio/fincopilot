@@ -1,20 +1,30 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { Turn } from '../types/agent'
 import ChatMessage from './ChatMessage.vue'
 
-const props = defineProps<{ turns: Turn[]; selectedTurnId: string | null; isRunning: boolean }>()
-const emit = defineEmits<{ send: [message: string]; select: [id: string]; stop: [] }>()
+const props = defineProps<{ turns: Turn[]; selectedTurnId: string | null; isRunning: boolean; hasPortfolio: boolean }>()
+const emit = defineEmits<{ send: [message: string]; select: [id: string]; stop: []; openPortfolio: []; trySample: [] }>()
 
 const draft = ref('')
 const scroller = ref<HTMLElement | null>(null)
 
-const suggestions = [
+const generalSuggestions = [
   'Qual a Selic hoje e quanto rende R$ 10 mil em um ano num CDB a 100% do CDI?',
   'Se eu investir R$ 500 por mês a 11% ao ano por 20 anos, quanto terei? Considere 4% de inflação.',
   'Compare o desempenho de hoje de PETR4, VALE3 e ITUB4.',
   'O que é o IPCA e como a inflação atual afeta meus investimentos?',
 ]
+
+// Com carteira cadastrada, as sugestões usam a analyze_portfolio (e combinam com outras ferramentas).
+const portfolioSuggestions = [
+  'Analise a diversificação da minha carteira.',
+  'Quanto minha carteira rendeu em relação ao que investi?',
+  'Qual posição pesa mais na minha carteira e que risco isso traz?',
+  'Se eu aportar R$ 500 por mês nessa carteira a 10% ao ano, quanto terei em 10 anos?',
+]
+
+const suggestions = computed(() => (props.hasPortfolio ? portfolioSuggestions : generalSuggestions))
 
 function submit(text = draft.value) {
   if (!text.trim() || props.isRunning) return
@@ -53,6 +63,13 @@ watch(
             <button type="button" @click="submit(s)">{{ s }}</button>
           </li>
         </ul>
+        <div v-if="!hasPortfolio" class="portfolio-cta">
+          <span>Tem uma carteira? O agente analisa alocação, pesos e resultado.</span>
+          <div class="cta-actions">
+            <button type="button" class="link-btn" @click="emit('openPortfolio')">Montar minha carteira</button>
+            <button type="button" class="link-btn" @click="emit('trySample')">Testar com a carteira de exemplo</button>
+          </div>
+        </div>
       </div>
 
       <ChatMessage
@@ -143,6 +160,38 @@ watch(
   border-color: var(--accent);
   background: var(--accent-bg);
 }
+
+.portfolio-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.link-btn {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-btn:hover { text-decoration: underline; }
 
 .composer {
   display: flex;

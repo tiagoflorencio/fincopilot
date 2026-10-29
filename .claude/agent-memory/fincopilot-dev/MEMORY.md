@@ -1,0 +1,3 @@
+- [Peculiaridades de APIs](reference_api_quirks.md) — ApiEnum.Raw() no SDK C#, Selic SGS com datas futuras, CDI decrescente, user-secrets só em Development
+- [Git e README](feedback_git_and_readme.md) — mostrar arquivos antes de commitar; README com emojis e badges; .gitattributes LF
+- [Escopo e navegador](feedback_scope_and_browser.md) — aprova planos em bloco com recomendação; sem extensão Chrome, usar Edge headless

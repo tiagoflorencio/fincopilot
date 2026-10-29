@@ -13,6 +13,9 @@ public sealed class Conversation(string id)
     /// </summary>
     public List<BetaMessageParam> Messages { get; } = [];
 
+    /// <summary>Última carteira já avisada ao modelo, para só repetir o aviso quando ela mudar.</summary>
+    public string? PortfolioFingerprint { get; set; }
+
     /// <summary>Impede duas execuções simultâneas do agente na mesma conversa.</summary>
     public SemaphoreSlim Lock { get; } = new(1, 1);
 }
